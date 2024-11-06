@@ -6,11 +6,37 @@
     <title>OCR Upload</title>
 </head>
 <body>
-    <h1>Upload Image for OCR</h1>
+    <h1>Extrair palavras do PDF</h1>
     <form id="upload-form" enctype="multipart/form-data" method="POST">
     {% csrf_token %}
     <input type="file" name="imagem" id="image-input" accept="image/*, application/pdf" capture="environment">
-    <button type="submit">Upload</button>
+    <button type="submit">Enviar</button>
+    <h2>Texto detectado:</h2>
+    <pre id="result-text"></pre>
+     
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('imagem', document.getElementById('image-input').files[0]);
+
+            // Get CSRF token from the page
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            const response = await fetch('/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': csrfToken, // Add CSRF token header
+                }
+            });
+
+            const result = await response.json();
+            document.getElementById('result-text').textContent = result.detected_text || 'Nenhum texto detectado';
+        });
+    </script>
+    
 </form>
 </body>
 </html>

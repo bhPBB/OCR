@@ -8,11 +8,11 @@ from google.cloud import storage
 from django.core.files.storage import default_storage
 from django.conf import settings
 from .forms import ImageUploadForm
-from django.shortcuts import redirect
 
 class OCRUploadView(FormView):
     template_name = 'upload.html'
     form_class = ImageUploadForm
+    success_url = reverse_lazy('upload')
 
     def form_valid(self, form):
         uploaded_file = form.cleaned_data['imagem']
@@ -22,16 +22,10 @@ class OCRUploadView(FormView):
         
         # Check if the uploaded file is a PDF or image then extract text to variable
         if uploaded_file.name.endswith('.pdf'):
-            detected_text = self.process_pdf(file_path)
+            return self.process_pdf(file_path)
         else:
             return self.process_image(file_path)
         
-        # Store the result in session or redirect with context
-        self.request.session['detected_text'] = detected_text if detected_text != "" else "No text detected" 
-
-        # Redirect to result view
-        return redirect('ocr_result')
-    
     def process_pdf(self, file_path):
         # Initialize Vision and Storage clients
         client = vision.ImageAnnotatorClient()
@@ -70,6 +64,7 @@ class OCRUploadView(FormView):
         blob_list = list(bucket.list_blobs(prefix=output_prefix))
 
         detected_text = ""
+        
         for blob in blob_list:
             # Download each JSON result and parse it
             result_data = blob.download_as_text()
@@ -92,7 +87,7 @@ class OCRUploadView(FormView):
             blob.delete()
 
         # Return JSON response with detected text
-        return detected_text
+        return JsonResponse({'detected_text': detected_text})
 
     def process_image(self, file_path):
         # Initialize Google Cloud Vision API client
@@ -107,19 +102,11 @@ class OCRUploadView(FormView):
         texts = response.full_text_annotation.text
 
         # Extract detected text
-        detected_text = texts if texts else "No text detected"
+        detected_text = texts if texts else "Nenhum texto detectado."
         
         # Return JSON response
-        return detected_text
+        return JsonResponse({'detected_text': detected_text})
 
     def form_invalid(self, form):
         return JsonResponse({'error': 'Invalid form'}, status=400)
     
-class OCRResultView(TemplateView):
-    template_name = 'result.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        # Retrieve the detected text from the session or model
-        context['detected_text'] = self.request.session.get('detected_text', 'No text detected')
-        return context

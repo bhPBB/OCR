@@ -1,5 +1,7 @@
-# Google App Engine generated folder
+# Google
 appengine-generated/
+.gcloudignore
+app.yaml
 
 # Django #
 *.log
@@ -139,3 +141,4 @@ GitHub.sublime-settings
 !.vscode/launch.json 
 !.vscode/extensions.json 
 .history
+
