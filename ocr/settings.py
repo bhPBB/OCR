@@ -9,21 +9,26 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env(DEBUG=(bool, False), LOCAL=(bool, True))
 environ.Env.read_env(BASE_DIR / '.env')
 
+DEBUG = env("DEBUG")
+
+LOCAL = env("LOCAL")
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = "django-insecure-nf6^_-(q(4dk29t#zz_z57s^sj%e$40gze0!11r2in9o&kcdx)"
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env("DEBUG")
-
-LOCAL = env("LOCAL")
-
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=['localhost'])
+# CSRF_TRUSTED_ORIGINS = env.list('CSRF', default=['https://localhost:8000'])
+# CSRF_ALLOWED_ORIGINS = env.list('CSRF', default=['https://localhost:8000'])
+# CORS_ORIGINS_WHITELIST = env.list('CSRF', default=['https://localhost:8000'])
+ALLOWED_HOSTS = ['localhost']
+CSRF_TRUSTED_ORIGINS = ['https://localhost:8000']
+CSRF_ALLOWED_ORIGINS = ['https://localhost:8000']
+CORS_ORIGINS_WHITELIST = ['https://localhost:8000']
 
 # Application definition
-
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

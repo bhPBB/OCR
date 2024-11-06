@@ -1,31 +1,37 @@
 # views.py
-from django.views.generic.edit import FormView
-from django.urls import reverse_lazy
 from django.http import JsonResponse
+from django.views.generic.edit import FormView
+from django.views.generic import TemplateView
+from django.urls import reverse_lazy
 from google.cloud import vision
 from google.cloud import storage
 from django.core.files.storage import default_storage
 from django.conf import settings
 from .forms import ImageUploadForm
+from django.shortcuts import redirect
 
 class OCRUploadView(FormView):
     template_name = 'upload.html'
     form_class = ImageUploadForm
-    success_url = reverse_lazy('upload')
 
     def form_valid(self, form):
-        # Get the uploaded file
         uploaded_file = form.cleaned_data['imagem']
         
         # Save to Google Cloud Storage
         file_path = default_storage.save(uploaded_file.name, uploaded_file)
-
-        # Check if the uploaded file is a PDF or image
+        
+        # Check if the uploaded file is a PDF or image then extract text to variable
         if uploaded_file.name.endswith('.pdf'):
-            return self.process_pdf(file_path)
+            detected_text = self.process_pdf(file_path)
         else:
             return self.process_image(file_path)
+        
+        # Store the result in session or redirect with context
+        self.request.session['detected_text'] = detected_text if detected_text != "" else "No text detected" 
 
+        # Redirect to result view
+        return redirect('ocr_result')
+    
     def process_pdf(self, file_path):
         # Initialize Vision and Storage clients
         client = vision.ImageAnnotatorClient()
@@ -33,11 +39,11 @@ class OCRUploadView(FormView):
 
         # Define GCS URIs
         gcs_source_uri = f'gs://{settings.BUCKET}/media/{file_path}'
-        output_bucket_name = settings.BUCKET
+        settings.BUCKET
         output_prefix = 'ocr_results/'
 
         # Setup request for async batch processing of PDF
-        gcs_destination_uri = f'gs://{output_bucket_name}/{output_prefix}'
+        gcs_destination_uri = f'gs://{settings.BUCKET}/{output_prefix}'
         mime_type = 'application/pdf'
         
         input_config = vision.InputConfig(
@@ -60,7 +66,7 @@ class OCRUploadView(FormView):
         operation.result(timeout=300)
 
         # Retrieve the JSON result file from GCS
-        bucket = storage_client.bucket(output_bucket_name)
+        bucket = storage_client.bucket(settings.BUCKET)
         blob_list = list(bucket.list_blobs(prefix=output_prefix))
 
         detected_text = ""
@@ -68,17 +74,25 @@ class OCRUploadView(FormView):
             # Download each JSON result and parse it
             result_data = blob.download_as_text()
             response = vision.AnnotateFileResponse.from_json(result_data)
-            for page in response.responses[0].full_text_annotation.pages:
-                for block in page.blocks:
-                    for paragraph in block.paragraphs:
-                        detected_text += "".join([word.symbols[0].text for word in paragraph.words])
         
+        # Extract structured text from each page in the response
+        for page in response.responses[0].full_text_annotation.pages:
+            for block in page.blocks:
+                block_text = ""  # Gather all text from this block
+                for paragraph in block.paragraphs:
+                    paragraph_text = " ".join([
+                        "".join([symbol.text for symbol in word.symbols])  # Full word
+                        for word in paragraph.words
+                    ])
+                    block_text += paragraph_text + "\n"  # Add paragraph with line break
+                detected_text += block_text + "\n\n"  # Double line break between blocks
+
         # Clean up GCS results
         for blob in blob_list:
             blob.delete()
 
         # Return JSON response with detected text
-        return JsonResponse({'detected_text': detected_text})
+        return detected_text
 
     def process_image(self, file_path):
         # Initialize Google Cloud Vision API client
@@ -96,7 +110,16 @@ class OCRUploadView(FormView):
         detected_text = texts if texts else "No text detected"
         
         # Return JSON response
-        return JsonResponse({'detected_text': detected_text})
+        return detected_text
 
     def form_invalid(self, form):
         return JsonResponse({'error': 'Invalid form'}, status=400)
+    
+class OCRResultView(TemplateView):
+    template_name = 'result.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Retrieve the detected text from the session or model
+        context['detected_text'] = self.request.session.get('detected_text', 'No text detected')
+        return context
