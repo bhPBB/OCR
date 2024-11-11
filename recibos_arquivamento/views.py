@@ -64,12 +64,13 @@ class OCRUploadView(FormView):
         blob_list = list(bucket.list_blobs(prefix=output_prefix))
 
         detected_text = ""
-        
+        first_line = True  # Flag to track the first line
+
         for blob in blob_list:
             # Download each JSON result and parse it
             result_data = blob.download_as_text()
             response = vision.AnnotateFileResponse.from_json(result_data)
-        
+
         # Extract structured text from each page in the response
         for page in response.responses[0].full_text_annotation.pages:
             for block in page.blocks:
@@ -79,9 +80,16 @@ class OCRUploadView(FormView):
                         "".join([symbol.text for symbol in word.symbols])  # Full word
                         for word in paragraph.words
                     ])
-                    block_text += paragraph_text + "\n"  # Add paragraph with line break
-                detected_text += block_text + "\n\n"  # Double line break between blocks
+                    
+                    # Check if it's the first line
+                    if first_line:
+                        block_text += paragraph_text + "\n"  # Add line break after the first line
+                        first_line = False  # Disable the first-line flag
+                    else:
+                        block_text += paragraph_text + "/"  # Add "/" for other lines
 
+                detected_text += block_text  # Append block text
+                
         # Clean up GCS results
         for blob in blob_list:
             blob.delete()

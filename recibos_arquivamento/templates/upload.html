@@ -12,7 +12,10 @@
     <input type="file" name="imagem" id="image-input" accept="image/*, application/pdf" capture="environment">
     <button type="submit">Enviar</button>
     <h2>Texto detectado:</h2>
-    <pre id="result-text"></pre>
+    <div style="overflow: auto;">
+        <pre id="result-text"></pre>
+        <button onclick="copyToClipboard()" style="display: none">Copiar texto</button>
+    </divs>
      
     <script>
         document.getElementById('upload-form').addEventListener('submit', async (e) => {
@@ -34,7 +37,18 @@
 
             const result = await response.json();
             document.getElementById('result-text').textContent = result.detected_text || 'Nenhum texto detectado';
+            
         });
+     
+        function copyToClipboard() {
+        const textToCopy = document.getElementById("result-text").innerText;
+
+        navigator.clipboard.writeText(textToCopy).then(function() {
+            alert("Texto copiado!");
+        }).catch(function(error) {
+            alert("Falha ao copiar: " + error);
+        });
+         }
     </script>
     
 </form>
