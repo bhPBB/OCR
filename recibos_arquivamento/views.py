@@ -17,26 +17,33 @@ class OCRUploadView(FormView):
     def form_valid(self, form):
         uploaded_file = form.cleaned_data['imagem']
         
-        # Save to Google Cloud Storage
+        # salva arquivo no cloud storage
         file_path = default_storage.save(uploaded_file.name, uploaded_file)
         
-        # Check if the uploaded file is a PDF or image then extract text to variable
+        # checa se o arquivo é um pdf
         if uploaded_file.name.endswith('.pdf'):
-            return self.process_pdf(file_path)
+            response = self.process_pdf(file_path)
         else:
-            return self.process_image(file_path)
+            response = self.process_image(file_path)
         
+        # Apaga o arquivo original do bucket
+        storage_client = storage.Client()
+        bucket = storage_client.bucket(settings.BUCKET)
+        blob = bucket.blob(f'media/{file_path}')
+        blob.delete()
+
+        return response
+
     def process_pdf(self, file_path):
-        # Initialize Vision and Storage clients
+        # Inicializa o cliente do cloud vision e do cloud storage 
         client = vision.ImageAnnotatorClient()
         storage_client = storage.Client()
 
-        # Define GCS URIs
+        # inicializa o bucket
         gcs_source_uri = f'gs://{settings.BUCKET}/media/{file_path}'
-        settings.BUCKET
         output_prefix = 'ocr_results/'
 
-        # Setup request for async batch processing of PDF
+        # Forma a url para enviar o arquivo pdf e receber o arquivo json
         gcs_destination_uri = f'gs://{settings.BUCKET}/{output_prefix}'
         mime_type = 'application/pdf'
         
@@ -47,7 +54,7 @@ class OCRUploadView(FormView):
             gcs_destination=vision.GcsDestination(uri=gcs_destination_uri)
         )
 
-        # Send async request
+        # Envia o request
         operation = client.async_batch_annotate_files(
             requests=[{
                 'input_config': input_config,
@@ -56,65 +63,56 @@ class OCRUploadView(FormView):
             }]
         )
 
-        # Wait for the operation to complete
+        # Aguarda a operação ser concluída
         operation.result(timeout=300)
 
-        # Retrieve the JSON result file from GCS
+        # Recupera o resultado do arquivo json
         bucket = storage_client.bucket(settings.BUCKET)
         blob_list = list(bucket.list_blobs(prefix=output_prefix))
 
         detected_text = ""
-        first_line = True  # Flag to track the first line
 
         for blob in blob_list:
-            # Download each JSON result and parse it
             result_data = blob.download_as_text()
             response = vision.AnnotateFileResponse.from_json(result_data)
 
-        # Extract structured text from each page in the response
         for page in response.responses[0].full_text_annotation.pages:
             for block in page.blocks:
-                block_text = ""  # Gather all text from this block
+                block_text = "" 
                 for paragraph in block.paragraphs:
                     paragraph_text = " ".join([
-                        "".join([symbol.text for symbol in word.symbols])  # Full word
+                        "".join([symbol.text for symbol in word.symbols])
                         for word in paragraph.words
                     ])
                     
-                    # Check if it's the first line
-                    if first_line:
-                        block_text += paragraph_text + "\n"  # Add line break after the first line
-                        first_line = False  # Disable the first-line flag
-                    else:
-                        block_text += paragraph_text + "/"  # Add "/" for other lines
-
-                detected_text += block_text  # Append block text
+                    block_text += paragraph_text + "\n"  # Quebra de linha após cada linha
+                detected_text += block_text + "\n\n"  # Dupla quebra de linha após cada bloco
                 
-        # Clean up GCS results
+        # Apaga os resultados
         for blob in blob_list:
             blob.delete()
 
-        # Return JSON response with detected text
+        # Retorna resposta para o template
         return JsonResponse({'detected_text': detected_text})
 
     def process_image(self, file_path):
-        # Initialize Google Cloud Vision API client
+        # Inicializa o cliente do cloud vision
         client = vision.ImageAnnotatorClient()
 
-        # Generate GCS file URI
+        # Gera a url do arquivo
         gcs_uri = f'gs://{settings.BUCKET}/media/{file_path}'
 
-        # Use the GCS file URI directly in Vision API for image
+        # Processa o arquivo
         imagem = vision.Image(source=vision.ImageSource(gcs_image_uri=gcs_uri))
         response = client.document_text_detection(image=imagem)
         texts = response.full_text_annotation.text
 
-        # Extract detected text
+        # Salva o texto em uma variável
         detected_text = texts if texts else "Nenhum texto detectado."
         
-        # Return JSON response
+        # Retorna o texto para o template
         return JsonResponse({'detected_text': detected_text})
 
-    def form_invalid(self, form):
+    def form_invalid(self):
         return JsonResponse({'error': 'Invalid form'}, status=400)
     

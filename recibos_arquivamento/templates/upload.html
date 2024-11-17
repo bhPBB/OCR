@@ -6,7 +6,9 @@
     <title>OCR Upload</title>
 </head>
 <body>
-    <h1>Extrair palavras do PDF</h1>
+    <h1>Extrair texto de PDF/Imagem</h1>
+    <p>Extraia o texto de imagens / arquivos PDF fazendo o upload de um arquivo.</p>
+    <p>O arquivo será processado pelo serviço de visão computacional do Google Cloud: o Cloud Vision, e o resultado será exibido abaixo.</p>
     <form id="upload-form" enctype="multipart/form-data" method="POST">
     {% csrf_token %}
     <input type="file" name="imagem" id="image-input" accept="image/*, application/pdf" capture="environment">
@@ -14,7 +16,6 @@
     <h2>Texto detectado:</h2>
     <div style="overflow: auto;">
         <pre id="result-text"></pre>
-        <button onclick="copyToClipboard()" style="display: none">Copiar texto</button>
     </divs>
      
     <script>
@@ -39,16 +40,6 @@
             document.getElementById('result-text').textContent = result.detected_text || 'Nenhum texto detectado';
             
         });
-     
-        function copyToClipboard() {
-        const textToCopy = document.getElementById("result-text").innerText;
-
-        navigator.clipboard.writeText(textToCopy).then(function() {
-            alert("Texto copiado!");
-        }).catch(function(error) {
-            alert("Falha ao copiar: " + error);
-        });
-         }
     </script>
     
 </form>
