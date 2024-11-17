@@ -19,16 +19,17 @@ LOCAL = env("LOCAL")
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("SECRET_KEY")
 
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=['localhost'])
-CSRF_TRUSTED_ORIGINS = env.list('CSRF', default=['https://localhost:8000'])
-CSRF_ALLOWED_ORIGINS = env.list('CSRF', default=['https://localhost:8000'])
-CORS_ORIGINS_WHITELIST = env.list('CSRF', default=['https://localhost:8000'])
-
-# Local
-# ALLOWED_HOSTS = ['localhost']
-# CSRF_TRUSTED_ORIGINS = ['https://localhost:8000']
-# CSRF_ALLOWED_ORIGINS = ['https://localhost:8000']
-# CORS_ORIGINS_WHITELIST = ['https://localhost:8000']
+if not LOCAL:
+    ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=['localhost'])
+    CSRF_TRUSTED_ORIGINS = env.list('CSRF', default=['https://localhost:8000'])
+    CSRF_ALLOWED_ORIGINS = env.list('CSRF', default=['https://localhost:8000'])
+    CORS_ORIGINS_WHITELIST = env.list('CSRF', default=['https://localhost:8000'])
+else:
+    # Local
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+    CSRF_TRUSTED_ORIGINS = ['https://localhost:8000', 'https://127.0.0.1:8000']
+    CSRF_ALLOWED_ORIGINS = ['https://localhost:8000', 'https://127.0.0.1:8000']
+    CORS_ORIGINS_WHITELIST = ['https://localhost:8000', 'https://127.0.0.1:8000']
 
 # Application definition
 INSTALLED_APPS = [
