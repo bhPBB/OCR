@@ -1,0 +1,1 @@
+Um site feito com django onde o usuário pode fazer o upload de uma imagem/pdf para que o texto dela seja extraído com a API do Google Cloud Vision. Uma API que usa OCR para detectar textos em imagens e documentos.
