@@ -1,6 +1,7 @@
 # OCR com Django e Google Cloud Vision
 
-Este projeto é um site desenvolvido com Django que permite aos usuários fazer upload de imagens ou arquivos PDF para extração de texto, utilizando a API do Google Cloud Vision.  
+Este projeto é um site desenvolvido com Django que permite aos usuários fazer upload de imagens ou arquivos PDF para extração de texto, utilizando a API do Google Cloud Vision.
+Eu o criei para usar no meu trabalho atual, em que, mensalmente, preciso passar o conteúdo de diversos documentos não estruturados escritos à mão para planilhas de Excel.
 A aplicação está hospedada no **Google App Engine** e pode ser acessada diretamente através do link abaixo:
 
 🔗 **[Acessar aplicação online](https://ocr-python-440813.rj.r.appspot.com/)**
